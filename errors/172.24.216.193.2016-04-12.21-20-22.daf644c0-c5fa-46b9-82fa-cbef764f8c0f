@@ -1,0 +1,360 @@
+(dp1
+S'output'
+p2
+S"<type 'exceptions.NameError'> global name 'upfile' is not defined"
+p3
+sS'layer'
+p4
+S'C:\\inetpub\\wwwroot\\applications\\DBFread\\controllers/default.py'
+p5
+sS'code'
+p6
+S'# -*- coding: utf-8 -*-\n# this file is released under public domain and you can use without limitations\n\n#########################################################################\n## This is a sample controller\n## - index is the default action of any application\n## - user is required for authentication and authorization\n## - download is for downloading files uploaded in the db (does streaming)\n#########################################################################\nimport cStringIO\nfrom reportlab.pdfgen import canvas\nfrom reportlab.lib.pagesizes import letter\nfrom reportlab.lib.units import inch, mm\nfrom reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER, TA_JUSTIFY\nimport time\nfrom dbfpy import dbf\nimport os\nimport random\n\ndef index():\n    form=SQLFORM.factory(\n        Field(\'jacketno\',\'string\', label=\'Jacket Number\', requires=IS_NOT_EMPTY()),\n        Field(\'dbffile\',\'upload\',uploadfolder=os.path.join(request.folder,\'uploads\'), label=\'DBF File\', requires=IS_NOT_EMPTY()),\n        formstyle="divs", formname="dist_rep"\n    )\n    if form.process().accepted:\n        session.flash = \'Form Accepted\'\n        redirect(URL(\'create_labels_pdf\', args=[form.vars.jacketno, os.path.join(request.folder,\'uploads\',form.vars.dbffile)]))\n#        jacket = form.vars.jacketno\n#        upfile=os.path.join(request.folder,\'uploads\',form.vars.dbffile)\n\n    elif form.errors:\n        response.flash = \'Form Has Errors\'\n    else:\n        response.flash = \'Please Fill the Form\'\n\n    return dict(form=form)\n\n\ndef create_labels_pdf():\n\n    table = dbf.Dbf(upfile)\n\n    buffer = cStringIO.StringIO()\n    c = canvas.Canvas(buffer, pagesize=letter)\n    width, height = letter\n    top_bottom_margin = 1.0*inch\n    left_right_margin = 0.30*inch\n    line_space = 0.1875*inch\n    scnd_clmn = width/2\n    rec_size = 1.5*inch\n\n    c.translate(0, height - line_space)\n    c.setFont("Helvetica", 11)\n    c.drawCentredString(width/2,-line_space * 1,"Jacket: "+str(jacket))\n    c.drawCentredString(width/2,-line_space * 2,"Date: "+time.strftime("%m/%d/%Y"))\n\n    total_count = 0\n    rec_count = 0\n    pair_count = -1\n    for item in table:\n        c.setFont("Helvetica", 10)\n        if rec_count%2 == 0:\n            pair_count+=1\n            c.drawString(left_right_margin, -top_bottom_margin - (0 * line_space) - (rec_size * pair_count), item[\'AGENCY\'] if item[\'AGENCY\'] else \'\')\n            c.drawString(left_right_margin, -top_bottom_margin - (1 * line_space) - (rec_size * pair_count), item[\'ADDRESS1\'] if item[\'ADDRESS1\'] else \'\')\n            c.drawString(left_right_margin, -top_bottom_margin - (2 * line_space) - (rec_size * pair_count), item[\'ADDRESS2\'] if item[\'ADDRESS2\'] else \'\')\n            c.drawString(left_right_margin, -top_bottom_margin - (3 * line_space) - (rec_size * pair_count), item[\'ADDRESS3\'] if item[\'ADDRESS3\'] else \'\')\n            c.drawString(left_right_margin, -top_bottom_margin - (4 * line_space) - (rec_size * pair_count), item[\'ADDRESS4\'] if item[\'ADDRESS4\'] else \'\')\n        else:\n            c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (0 * line_space) - (rec_size * pair_count), item[\'AGENCY\'] if item[\'AGENCY\'] else \'\')\n            c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (1 * line_space) - (rec_size * pair_count), item[\'ADDRESS1\'] if item[\'ADDRESS1\'] else \'\')\n            c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (2 * line_space) - (rec_size * pair_count), item[\'ADDRESS2\'] if item[\'ADDRESS2\'] else \'\')\n            c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (3 * line_space) - (rec_size * pair_count), item[\'ADDRESS3\'] if item[\'ADDRESS3\'] else \'\')\n            c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (4 * line_space) - (rec_size * pair_count), item[\'ADDRESS4\'] if item[\'ADDRESS4\'] else \'\')\n        rec_count+=1\n        if rec_count > 11:\n            rec_count = 0\n            pair_count = -1\n            c.showPage()\n            c.translate(0, height - line_space)\n            c.setFont("Helvetica", 11)\n            c.drawCentredString(width/2,-line_space * 1,"Jacket: "+str(jacket))\n            c.drawCentredString(width/2,-line_space * 2,"Date: "+time.strftime("%m/%d/%Y"))\n\n    c.save()\n    pdf = buffer.getvalue()\n    buffer.close()\n\n    header = {\'Content-Disposition\': \'attachment; filename=\' + str(jacket) + \'_labels.pdf\'}\n    #        header = {\'Content-Type\': \'application/pdf\'}\n\n    response.headers.update(header)\n    \n    return pdf\n\n\ndef create_pdf():\n    pdf = None\n    jacket = None\n\n    form=SQLFORM.factory(\n        Field(\'title\',\'string\', label=\'Description or Title\', requires=IS_NOT_EMPTY()),\n        Field(\'dbffile\',\'upload\',uploadfolder=os.path.join(request.folder,\'uploads\'), label=\'DBF File\', requires=IS_NOT_EMPTY()),\n        formstyle="divs", formname="dist_rep"\n    )\n    if form.process().accepted:\n        title = form.vars.title\n        upfile=os.path.join(request.folder,\'uploads\',form.vars.dbffile)\n\n        table = dbf.Dbf(upfile)\n\n        buffer = cStringIO.StringIO()\n        c = canvas.Canvas(buffer, pagesize=letter)\n        width, height = letter\n        line_space = 11\n        third_page = height/3 - 5\n        end_width = width - 25\n\n        for item in table:\n            c.translate(0, height - line_space)\n            time.sleep(0.01)\n            rec_num = str.format(\'{0:.2f}\',time.time())\n            for pos in range(0,3):\n                c.setFont("Helvetica", 11)\n                c.drawCentredString(width/2, -line_space - (third_page * pos), "UNITED STATES GOVERNMENT PUBLISHING OFFICE")\n                c.drawCentredString(width/2, -2*(line_space) - (third_page * pos), "DELIVERY RECEIPT")\n                c.setFont("Helvetica", 10)\n                c.drawString(15*mm, -(3 * line_space) - (third_page * pos),"JACKET")\n                c.setFont("Helvetica-Bold", 10)\n                c.drawString(35*mm, -(3 * line_space) - (third_page * pos),str(item[\'BILLINGJKT\']) + "  00000")\n                c.setFont("Helvetica", 10)\n                c.drawString(60*mm, -(3 * line_space) - (third_page * pos),"REQ. NO.")\n                c.setFont("Helvetica-Bold", 10)\n                c.drawString(80*mm, -(3 * line_space) - (third_page * pos),"00000")\n                c.setFont("Helvetica", 10)\n                c.drawString(140*mm, -(3 * line_space) - (third_page * pos),"RECEIPT NO.")\n                c.setFont("Helvetica-Bold", 10)\n                c.drawString(175*mm, -(3 * line_space) - (third_page * pos),rec_num)\n                c.setFont("Helvetica", 10)\n                c.drawString(15*mm, -(5 * line_space) - (third_page * pos),"DELIVER TO:")\n                c.drawString(140*mm, -(5 * line_space) - (third_page * pos), "DATE:")\n                c.drawString(140*mm, -(6 * line_space) - (third_page * pos), "PREPARED BY:")\n                c.drawString(140*mm, -(7 * line_space) - (third_page * pos), "AGENCY BAC:")\n                c.drawString(140*mm, -(8 * line_space) - (third_page * pos), "AGENCY JACKET:")\n                c.drawString(140*mm, -(9 * line_space) - (third_page * pos), "AGENCY REQ.:")\n                c.setFont("Helvetica-Bold", 10)\n                c.drawString(175*mm,-(5 * line_space) - (third_page * pos), time.strftime("%m/%d/%y"))\n#                c.drawString(175*mm,-(6 * line_space) - (third_page * pos), auth.user.first_name[0] + \'. \' + auth.user.last_name)\n                c.drawString(175*mm,-(7 * line_space) - (third_page * pos), item[\'BAC\'] if item[\'BAC\'] else \'\')\n                c.drawString(175*mm,-(8 * line_space) - (third_page * pos), str(item[\'OPENJKT\'])[0:3] + \'-\' + str(item[\'OPENJKT\'])[3:6] if item[\'OPENJKT\'] and str(item[\'OPENJKT\'])[0:2] != \'00\' else \'\')\n                c.drawString(175*mm,-(9 * line_space) - (third_page * pos), item[\'REQ\'] if item[\'REQ\'] else \'\')\n                c.drawString(40*mm,-(5 * line_space) - (third_page * pos), item[\'AGENCY\'] if item[\'AGENCY\'] else \'\')\n                c.drawString(40*mm,-(6 * line_space) - (third_page * pos), item[\'ADDRESS1\'] if item[\'ADDRESS1\'] else \'\')\n                c.drawString(40*mm,-(7 * line_space) - (third_page * pos), item[\'ADDRESS2\'] if item[\'ADDRESS2\'] else \'\')\n                c.drawString(40*mm,-(8 * line_space) - (third_page * pos), item[\'ADDRESS3\'] if item[\'ADDRESS3\'] else \'\')\n                c.drawString(40*mm,-(9 * line_space) - (third_page * pos), item[\'ADDRESS4\'] if item[\'ADDRESS4\'] else \'\')\n                c.setFont("Helvetica", 10)\n                c.line(15*mm, -(10 * line_space) - (third_page * pos), end_width, -(10 * line_space) - (third_page * pos))\n                c.drawCentredString(152*mm, -(11 * line_space) - (third_page * pos), "NUMBER")\n                c.drawCentredString(176*mm, -(11 * line_space) - (third_page * pos), "NUMBER")\n                c.drawCentredString(198*mm, -(11 * line_space) - (third_page * pos), "MISC.")\n\n                c.drawCentredString(27*mm,-(12 * line_space) - (third_page * pos), "QUANTITY")\n                c.drawCentredString(90*mm,-(12 * line_space) - (third_page * pos), "DESCRIPTION OR TITLE")\n                c.drawCentredString(152*mm,-(12 * line_space) - (third_page * pos), "PACKAGES")\n                c.drawCentredString(176*mm,-(12 * line_space) - (third_page * pos), "CARTONS")\n                c.drawCentredString(198*mm,-(12 * line_space) - (third_page * pos), "OTHER")\n                c.line(15*mm,-(12 * line_space+2) - (third_page * pos), end_width, -(12 * line_space+2) - (third_page * pos))\n                c.line(15*mm,-(14 * line_space+2) - (third_page * pos), end_width, -(14 * line_space+2) - (third_page * pos))\n                c.line(40*mm,-(10 * line_space) - (third_page * pos), 40*mm, -(14 * line_space+2) - (third_page * pos))\n                c.line(width*2/3 - 5*mm,-(10 * line_space) - (third_page * pos), width*2/3 - 5*mm,-(14 * line_space+2) - (third_page * pos))\n                c.line(width*2/3 + 20*mm,-(10 * line_space) - (third_page * pos), width*2/3 + 20*mm,-(14 * line_space+2) - (third_page * pos))\n                c.line(width*2/3 + 43*mm,-(10 * line_space) - (third_page * pos), width*2/3 + 43*mm,-(14 * line_space+2) - (third_page * pos))\n                c.setFont("Helvetica-Bold", 10)\n                c.drawCentredString(27*mm, -(14 * line_space) - (third_page * pos),  str(item[\'HEARG\']) if item[\'HEARG\'] else \'\')\n                c.drawCentredString(90*mm, -(14 * line_space) - (third_page * pos),  str(title))\n\n                c.setFont("Helvetica", 10)\n                c.drawString(15*mm,-(16 * line_space) - (third_page * pos),"CHECKER")\n                c.line(37*mm,-(16 * line_space + 1*mm) - (third_page * pos), end_width/2 + 5*mm, -(16 * line_space+ 1*mm) - (third_page * pos))\n                c.drawString(end_width/2 + 10*mm,-(16 * line_space) - (third_page * pos),"REC. IN DELIVERY")\n                c.line(end_width/2 + 43*mm,-(16 * line_space + 1*mm) - (third_page * pos), end_width, -(16 * line_space + 1*mm) - (third_page * pos))\n                c.drawString(15*mm,-(18 * line_space) - (third_page * pos),"MESSENGER")\n                c.line(37*mm,-(18 * line_space + 1*mm) - (third_page * pos), end_width/2 + 5*mm,-(18 * line_space + 1*mm) - (third_page * pos))\n                c.line(end_width/2 + 10*mm,-(18 * line_space + 1*mm) - (third_page * pos), end_width,-(18 * line_space + 1*mm) - (third_page * pos))\n                c.setFont("Helvetica-Oblique", 9)\n                c.drawString(end_width/2 + 12*mm,-(19 * line_space + 1*mm) - (third_page * pos),"SIGNATURE OF PERSON RECEIVING")\n                c.drawString(end_width-10*mm,-(19 * line_space + 1*mm) - (third_page * pos),"DATE")\n                c.setFont("Helvetica", 9)\n                if pos == 0:\n                    c.drawCentredString(width/2,-(20 * line_space + 1*mm) - (third_page * pos), "(Control Copy)")\n                elif pos == 1:\n                    c.drawCentredString(width/2,-(20 * line_space + 1*mm) - (third_page * pos), "(Customer Copy)")\n                elif pos == 2:\n                    c.drawCentredString(width/2,-(20 * line_space + 1*mm) - (third_page * pos), "(Delivery Copy)")\n            c.showPage()\n            c.save()\n\n        pdf = buffer.getvalue()\n        buffer.close()\n\n        header = {\'Content-Disposition\': \'attachment; filename=\' + str(title) + \'_labels.pdf\'}\n#        header = {\'Content-Type\': \'application/pdf\'}\n\n        response.headers.update(header)\n        return pdf\n    elif form.errors:\n        response.flash = \'Form Has Errors\'\n    else:\n        response.flash = \'Please Fill the Form\'\n\n    return dict(form=form)\n\nresponse._vars=response._caller(create_labels_pdf)\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__hash__'
+p12
+S"<method-wrapper '__hash__' of exceptions.NameError object>"
+p13
+sS'__setattr__'
+p14
+S"<method-wrapper '__setattr__' of exceptions.NameError object>"
+p15
+sS'__reduce_ex__'
+p16
+S'<built-in method __reduce_ex__ of exceptions.NameError object>'
+p17
+sS'__getslice__'
+p18
+S"<method-wrapper '__getslice__' of exceptions.NameError object>"
+p19
+sS'__getitem__'
+p20
+S"<method-wrapper '__getitem__' of exceptions.NameError object>"
+p21
+sS'__setstate__'
+p22
+S'<built-in method __setstate__ of exceptions.NameError object>'
+p23
+sS'__reduce__'
+p24
+S'<built-in method __reduce__ of exceptions.NameError object>'
+p25
+sS'__str__'
+p26
+S"<method-wrapper '__str__' of exceptions.NameError object>"
+p27
+sS'__format__'
+p28
+S'<built-in method __format__ of exceptions.NameError object>'
+p29
+sS'__getattribute__'
+p30
+S"<method-wrapper '__getattribute__' of exceptions.NameError object>"
+p31
+sS'__class__'
+p32
+S"<type 'exceptions.NameError'>"
+p33
+sS'__unicode__'
+p34
+S'<built-in method __unicode__ of exceptions.NameError object>'
+p35
+sS'__delattr__'
+p36
+S"<method-wrapper '__delattr__' of exceptions.NameError object>"
+p37
+sS'__subclasshook__'
+p38
+S'<built-in method __subclasshook__ of type object>'
+p39
+sS'__repr__'
+p40
+S"<method-wrapper '__repr__' of exceptions.NameError object>"
+p41
+sS'__dict__'
+p42
+S'{}'
+p43
+sS'args'
+p44
+S'("global name \'upfile\' is not defined",)'
+p45
+sS'__sizeof__'
+p46
+S'<built-in method __sizeof__ of exceptions.NameError object>'
+p47
+sS'__doc__'
+p48
+S"'Name not found globally.'"
+p49
+sS'__init__'
+p50
+S"<method-wrapper '__init__' of exceptions.NameError object>"
+p51
+sS'__new__'
+p52
+S'<built-in method __new__ of type object>'
+p53
+ssS'evalue'
+p54
+S"global name 'upfile' is not defined"
+p55
+sS'request'
+p56
+cgluon.html
+XML_unpickle
+p57
+(S's\x08\x88\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>DBFread</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>747483</div></td></tr><tr><td><div>C_</div></td></tr><tr><td><div>inetpub</div></td></tr><tr><td><div>wwwroot</div></td></tr><tr><td><div>applications</div></td></tr><tr><td><div>DBFread</div></td></tr><tr><td><div>uploads</div></td></tr><tr><td><div>no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>default</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_admin</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193-073ef340-0c0d-4027-a0ef-4ce9d06c1fee<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_congressionalfoxpro</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193-92b2264f-c648-40c8-b581-e31e3025e012<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_dbfread</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193-0018a2b8-0c99-4bcb-98fa-50ec7fb3c159<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">APPL_MD_PATH</td><td style="vertical-align:top;">:</td><td><div>/LM/W3SVC/1/ROOT</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">APPL_PHYSICAL_PATH</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot\\</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">APP_POOL_CONFIG</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\temp\\apppools\\DefaultAppPool\\DefaultAppPool.config</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">APP_POOL_ID</td><td style="vertical-align:top;">:</td><td><div>DefaultAppPool</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">AUTH_PASSWORD</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">AUTH_TYPE</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">AUTH_USER</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">CERT_COOKIE</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">CERT_FLAGS</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">CERT_ISSUER</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">CERT_SERIALNUMBER</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">CERT_SUBJECT</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">CONTENT_LENGTH</td><td style="vertical-align:top;">:</td><td><div>0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">CONTENT_TYPE</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">DOCUMENT_ROOT</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">GATEWAY_INTERFACE</td><td style="vertical-align:top;">:</td><td><div>CGI/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTPS</td><td style="vertical-align:top;">:</td><td><div>on</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTPS_KEYSIZE</td><td style="vertical-align:top;">:</td><td><div>256</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTPS_SECRETKEYSIZE</td><td style="vertical-align:top;">:</td><td><div>2048</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTPS_SERVER_ISSUER</td><td style="vertical-align:top;">:</td><td><div>CN=VMWEB2PYSQL01.gpo.gov</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTPS_SERVER_SUBJECT</td><td style="vertical-align:top;">:</td><td><div>CN=VMWEB2PYSQL01.gpo.gov</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8,ru;q=0.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CACHE_CONTROL</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONTENT_LENGTH</td><td style="vertical-align:top;">:</td><td><div>0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>session_id_admin=172.24.216.193-073ef340-0c0d-4027-a0ef-4ce9d06c1fee; session_id_congressionalfoxpro=172.24.216.193-92b2264f-c648-40c8-b581-e31e3025e012; session_id_dbfread=172.24.216.193-0018a2b8-0c99-4bcb-98fa-50ec7fb3c159</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_DNT</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>vmweb2pysql01.gpo.gov</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_REFERER</td><td style="vertical-align:top;">:</td><td><div>https://vmweb2pysql01.gpo.gov/DBFread/default/index</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_UPGRADE_INSECURE_REQUESTS</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.109 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_X_ORIGINAL_URL</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">IIS_UrlRewriteModule</td><td style="vertical-align:top;">:</td><td><div>7.1.1952.0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">IIS_WasUrlRewritten</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">INSTANCE_ID</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">INSTANCE_META_PATH</td><td style="vertical-align:top;">:</td><td><div>/LM/W3SVC/1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">INSTANCE_NAME</td><td style="vertical-align:top;">:</td><td><div>DEFAULT WEB SITE</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">LOCAL_ADDR</td><td style="vertical-align:top;">:</td><td><div>172.19.48.111</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">LOGON_USER</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_TRANSLATED</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot\\handler.web2py\\DBFread\\default\\create_labels_pdf\\747483\\C:\\inetpub\\wwwroot\\applications\\DBFread\\uploads\\no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_HOST</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>64289</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_USER</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_URI</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_FILENAME</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot\\handler.web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>vmweb2pysql01.gpo.gov</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>443</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT_SECURE</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Microsoft-IIS/8.5</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">UNENCODED_URL</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C%3A%5Cinetpub%5Cwwwroot%5Capplications%5CDBFread%5Cuploads%5Cno_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">URL</td><td style="vertical-align:top;">:</td><td><div>/handler.web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;C:\\\\inetpub\\\\wwwroot\\\\applications\\\\DBFread\\\\&#x27;, &#x27;C:\\\\inetpub\\\\wwwroot\\\\applications\\\\CongressionalFoxPro\\\\&#x27;, &#x27;C:\\\\inetpub\\\\wwwroot\\\\applications\\\\admin\\\\&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_pool_config</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\temp\\apppools\\DefaultAppPool\\DefaultAppPool.config</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_pool_id</td><td style="vertical-align:top;">:</td><td><div>DefaultAppPool</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">appl_md_path</td><td style="vertical-align:top;">:</td><td><div>/LM/W3SVC/1/ROOT</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">appl_physical_path</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot\\</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">auth_password</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">auth_type</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">auth_user</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cert_cookie</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cert_flags</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cert_issuer</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cert_serialnumber</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cert_subject</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">content_length</td><td style="vertical-align:top;">:</td><td><div>0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">content_type</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">document_root</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gateway_interface</td><td style="vertical-align:top;">:</td><td><div>CGI/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8,ru;q=0.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cache_control</td><td style="vertical-align:top;">:</td><td><div>max-age=0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_content_length</td><td style="vertical-align:top;">:</td><td><div>0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>session_id_admin=172.24.216.193-073ef340-0c0d-4027-a0ef-4ce9d06c1fee; session_id_congressionalfoxpro=172.24.216.193-92b2264f-c648-40c8-b581-e31e3025e012; session_id_dbfread=172.24.216.193-0018a2b8-0c99-4bcb-98fa-50ec7fb3c159</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_dnt</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>vmweb2pysql01.gpo.gov</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_referer</td><td style="vertical-align:top;">:</td><td><div>https://vmweb2pysql01.gpo.gov/DBFread/default/index</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_upgrade_insecure_requests</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.109 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_x_original_url</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">https</td><td style="vertical-align:top;">:</td><td><div>on</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">https_keysize</td><td style="vertical-align:top;">:</td><td><div>256</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">https_secretkeysize</td><td style="vertical-align:top;">:</td><td><div>2048</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">https_server_issuer</td><td style="vertical-align:top;">:</td><td><div>CN=VMWEB2PYSQL01.gpo.gov</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">https_server_subject</td><td style="vertical-align:top;">:</td><td><div>CN=VMWEB2PYSQL01.gpo.gov</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">iis_urlrewritemodule</td><td style="vertical-align:top;">:</td><td><div>7.1.1952.0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">iis_wasurlrewritten</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">instance_id</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">instance_meta_path</td><td style="vertical-align:top;">:</td><td><div>/LM/W3SVC/1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">instance_name</td><td style="vertical-align:top;">:</td><td><div>DEFAULT WEB SITE</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_addr</td><td style="vertical-align:top;">:</td><td><div>172.19.48.111</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>VMWEB2PYSQL01</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>VMWEB2PYSQL01.gpo.gov</div></td></tr><tr><td><div>vmweb2pysql01.gpo.gov</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>172.19.48.111</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">logon_user</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_translated</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot\\handler.web2py\\DBFread\\default\\create_labels_pdf\\747483\\C:\\inetpub\\wwwroot\\applications\\DBFread\\uploads\\no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_host</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>64289</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_user</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_filename</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot\\handler.web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>vmweb2pysql01.gpo.gov</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>443</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port_secure</td><td style="vertical-align:top;">:</td><td><div>1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Microsoft-IIS/8.5</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">unencoded_url</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C%3A%5Cinetpub%5Cwwwroot%5Capplications%5CDBFread%5Cuploads%5Cno_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/handler.web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.12.2-stable+timestamp.2015.08.09.14.29.44</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wfastcgi.http_x_original_url</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wfastcgi_http_x_original_url</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x0000000004108298&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringI object at 0x0000000003D603E8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.path_info</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.query_string</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>https</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x0000000004108298&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringI object at 0x0000000003D603E8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_path_info</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_query_string</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>https</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot\\applications\\DBFread\\</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>create_labels_pdf</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;C:\\\\inetpub\\\\wwwroot\\\\applications\\\\DBFread\\\\&#x27;, &#x27;C:\\\\inetpub\\\\wwwroot\\\\applications\\\\CongressionalFoxPro\\\\&#x27;, &#x27;C:\\\\inetpub\\\\wwwroot\\\\applications\\\\admin\\\\&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>VMWEB2PYSQL01</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>VMWEB2PYSQL01.gpo.gov</div></td></tr><tr><td><div>vmweb2pysql01.gpo.gov</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>172.19.48.111</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.12.2-stable+timestamp.2015.08.09.14.29.44</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_sheduler</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_shell</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 4, 12, 21, 20, 22, 528000)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div>747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/DBFread/default/create_labels_pdf/747483/C:/inetpub/wwwroot/applications/DBFread/uploads/no_table.dbffile.adcd6f31e5845926.3039322e444246.DBF</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 4, 13, 1, 20, 22, 528000)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x00000000041087F0&gt;</div></td></tr></table></div>'
+tRp58
+sS'frames'
+p59
+(lp60
+(dp61
+S'file'
+p62
+S'C:\\inetpub\\wwwroot\\gluon\\restricted.py'
+p63
+sS'dump'
+p64
+(dp65
+S'environment'
+p66
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}"
+p67
+sS'ccode'
+p68
+S'<code object <module> at 00000000042082B0, file ...cations\\DBFread\\controllers/default.py", line 10>'
+p69
+ssS'lnum'
+p70
+I227
+sS'lines'
+p71
+(dp72
+I224
+S'            ccode = code'
+p73
+sI225
+S'        else:'
+p74
+sI226
+S'            ccode = compile2(code, layer)'
+p75
+sI227
+S'        exec ccode in environment'
+p76
+sI228
+S'    except HTTP:'
+p77
+sI229
+S'        raise'
+p78
+sI230
+S'    except RestrictedError:'
+p79
+sI231
+S'        # do not encapsulate (obfuscate) the original RestrictedError'
+p80
+sI222
+S'    try:'
+p81
+sI223
+S'        if isinstance(code, types.CodeType):'
+p82
+ssS'call'
+p83
+S"(code='# -*- coding: utf-8 -*-\\n# this file is released ...sponse._vars=response._caller(create_labels_pdf)\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}, layer=r'C:\\inetpub\\wwwroot\\applications\\DBFread\\controllers/default.py')"
+p84
+sS'func'
+p85
+S'restricted'
+p86
+sa(dp87
+g62
+S'C:\\inetpub\\wwwroot\\applications\\DBFread\\controllers\\default.py'
+p88
+sg64
+(dp89
+sg70
+I215
+sg71
+(dp90
+I204
+S"#        header = {'Content-Type': 'application/pdf'}"
+p91
+sI205
+S''
+sI206
+S'        response.headers.update(header)'
+p92
+sI207
+S'        return pdf'
+p93
+sI208
+S'    elif form.errors:'
+p94
+sI209
+S"        response.flash = 'Form Has Errors'"
+p95
+sI210
+S'    else:'
+p96
+sI211
+S"        response.flash = 'Please Fill the Form'"
+p97
+sI212
+S''
+sI213
+S'    return dict(form=form)'
+p98
+ssg83
+S'()'
+p99
+sg85
+S'<module>'
+p100
+sa(dp101
+g62
+S'C:\\inetpub\\wwwroot\\gluon\\globals.py'
+p102
+sg64
+(dp103
+S'self'
+p104
+S'undefined'
+p105
+sS'f'
+S'<function create_labels_pdf>'
+p106
+ssg70
+I412
+sg71
+(dp107
+I416
+S"        self.generic_patterns = ['*']"
+p108
+sI407
+S"        self.flash = ''            # used by the default view layout"
+p109
+sI408
+S'        self.meta = Storage()      # used by web2py_ajax.html'
+p110
+sI409
+S'        self.menu = []             # used by the default view layout'
+p111
+sI410
+S'        self.files = []            # used by web2py_ajax.html'
+p112
+sI411
+S'        self._vars = None'
+p113
+sI412
+S'        self._caller = lambda f: f()'
+p114
+sI413
+S'        self._view_environment = None'
+p115
+sI414
+S'        self._custom_commit = None'
+p116
+sI415
+S'        self._custom_rollback = None'
+p117
+ssg83
+S'(f=<function create_labels_pdf>)'
+p118
+sg85
+S'<lambda>'
+p119
+sa(dp120
+g62
+S'C:\\inetpub\\wwwroot\\applications\\DBFread\\controllers\\default.py'
+p121
+sg64
+(dp122
+S'table'
+p123
+g105
+sS'upfile'
+p124
+g105
+sS'dbf.Dbf'
+p125
+S"<class 'dbfpy.dbf.Dbf'>"
+p126
+sS'global dbf'
+p127
+S"<module 'dbfpy.dbf' from 'C:\\Python27\\lib\\site-packages\\dbfpy\\dbf.pyc'>"
+p128
+ssg70
+I42
+sg71
+(dp129
+I37
+S'    return dict(form=form)'
+p130
+sI38
+S''
+sI39
+S''
+sI40
+S'def create_labels_pdf():'
+p131
+sI41
+S''
+sI42
+S'    table = dbf.Dbf(upfile)'
+p132
+sI43
+S''
+sI44
+S'    buffer = cStringIO.StringIO()'
+p133
+sI45
+S'    c = canvas.Canvas(buffer, pagesize=letter)'
+p134
+sI46
+S'    width, height = letter'
+p135
+ssg83
+S'()'
+p136
+sg85
+S'create_labels_pdf'
+p137
+sasS'pyver'
+p138
+S'Python 2.7.10: C:\\Python27\\python.exe (prefix: C:\\Python27)'
+p139
+sS'session'
+p140
+g57
+(S's\x9c\x00\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr></table></div>'
+tRp141
+sS'etype'
+p142
+S"<type 'exceptions.NameError'>"
+p143
+sS'date'
+p144
+S'Tue Apr 12 21:20:22 2016'
+p145
+sS'response'
+p146
+g57
+(S's\xd6\x1e\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x0000000004108340&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_dbfread</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193-0018a2b8-0c99-4bcb-98fa-50ec7fb3c159<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div>Form Accepted</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">form_label_separator</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">formstyle</td><td style="vertical-align:top;">:</td><td><div>bootstrap3_inline</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">logo</td><td style="vertical-align:top;">:</td><td><div><a class="navbar-brand" href="http://www.web2py.com/" id="web2py-logo"><b>web<span>2</span>py</b>&trade;&nbsp;</a></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>DBF to Labels</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/DBFread/default/index</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>DBF to Receipts</div></td></tr><tr><td><div>True</div></td></tr><tr><td><div>/DBFread/default/create_pdf</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>Seth Johnson &lt;sjohnson@gpo.gov&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">description</td><td style="vertical-align:top;">:</td><td><div>Creates labels from FoxPro DBF file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Web2py Web Framework</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div>FoxPro, python, DBF, labels</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^default/\\w+\\.py$</div></td></tr><tr><td><div>^default/create_labels_pdf/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_dbfread</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;C:\\\\inetpub\\\\wwwroot\\\\applications\\\\DBFread\\\\sessions\\\\145\\\\11b\\\\172.24.216.193-0018a2b8-0c99-4bcb-98fa-50ec7fb3c159&#x27;, mode &#x27;rb+&#x27; at 0x0000000002CE9F60&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>C:\\inetpub\\wwwroot\\applications\\DBFread\\sessions\\172.24.216.193-0018a2b8-0c99-4bcb-98fa-50ec7fb3c159</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>284adc1b4599e105d1c02cda7a507379</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>172.24.216.193-0018a2b8-0c99-4bcb-98fa-50ec7fb3c159</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_dbfread</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_locked</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>DBFread</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Dbfread</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>default/create_labels_pdf.html</div></td></tr></table></div>'
+tRp147
+sS'locals'
+p148
+(dp149
+ssS'traceback'
+p150
+S'Traceback (most recent call last):\n  File ".\\gluon\\restricted.py", line 227, in restricted\n    exec ccode in environment\n  File "C:\\inetpub\\wwwroot\\applications\\DBFread\\controllers/default.py", line 215, in <module>\n  File ".\\gluon\\globals.py", line 412, in <lambda>\n    self._caller = lambda f: f()\n  File "C:\\inetpub\\wwwroot\\applications\\DBFread\\controllers/default.py", line 42, in create_labels_pdf\n    table = dbf.Dbf(upfile)\nNameError: global name \'upfile\' is not defined\n'
+p151
+s.

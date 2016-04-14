@@ -1,0 +1,138 @@
+# -*- coding: utf-8 -*-
+# this file is released under public domain and you can use without limitations
+
+#########################################################################
+## This is a sample controller
+## - index is the default action of any application
+## - user is required for authentication and authorization
+## - download is for downloading files uploaded in the db (does streaming)
+#########################################################################
+import cStringIO
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER, TA_JUSTIFY
+import time
+from dbfpy import dbf
+import os
+
+def index():
+    pdf = None
+    jacket = None
+#    formitems = [ TR('Jacket number: ', INPUT(_name='jacketno', _id='jacketno', requires=IS_NOT_EMPTY())) ]
+#    formitems += [
+#      TR('DBF file: ', INPUT(_name='dbffile',  _id='dbffile', _type='file', requires=IS_NOT_EMPTY())),
+#      TR(TD(' '), INPUT(_name='submit', _type='submit')),
+#    ]
+#    form = FORM(TABLE(formitems))
+#    from gluon.sqlhtml import form_factory 
+    form=SQLFORM.factory(
+        Field('jacketno','string'),
+        Field('dbffile','upload',uploadfolder=os.path.join(request.folder,'uploads'))
+    )
+    if form.process().accepted:
+        jacket = form.vars.jacketno
+        upfile=os.path.join(request.folder,'uploads',form.vars.dbffile)
+        response.flash = T(upfile)
+        table = dbf.Dbf(upfile)
+
+        buffer = cStringIO.StringIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
+        top_bottom_margin = 1.0*inch
+        left_right_margin = 0.30*inch
+        line_space = 0.1875*inch
+        scnd_clmn = width/2
+        rec_size = 1.5*inch
+
+        c.translate(0, height - line_space)
+        c.setFont("Helvetica", 11)
+        c.drawCentredString(width/2,-line_space * 1,"Jacket: "+str(jacket))
+        c.drawCentredString(width/2,-line_space * 2,"Date: "+time.strftime("%m/%d/%Y"))
+
+        total_count = 0
+        rec_count = 0
+        pair_count = -1
+        for item in table:
+            c.setFont("Helvetica", 10)
+            if rec_count%2 == 0:
+                pair_count+=1
+                c.drawString(left_right_margin, -top_bottom_margin - (0 * line_space) - (rec_size * pair_count), item['AGENCY'])
+                c.drawString(left_right_margin, -top_bottom_margin - (1 * line_space) - (rec_size * pair_count), item['ADDRESS1'] if item['ADDRESS1'] else '')
+                c.drawString(left_right_margin, -top_bottom_margin - (2 * line_space) - (rec_size * pair_count), item['ADDRESS2'] if item['ADDRESS2'] else '')
+                c.drawString(left_right_margin, -top_bottom_margin - (3 * line_space) - (rec_size * pair_count), item['ADDRESS3'] if item['ADDRESS3'] else '')
+                c.drawString(left_right_margin, -top_bottom_margin - (4 * line_space) - (rec_size * pair_count), item['ADDRESS4'] if item['ADDRESS4'] else '')
+            else:
+                c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (0 * line_space) - (rec_size * pair_count), item['AGENCY'])
+                c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (1 * line_space) - (rec_size * pair_count), item['ADDRESS1'] if item['ADDRESS1'] else '')
+                c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (2 * line_space) - (rec_size * pair_count), item['ADDRESS2'] if item['ADDRESS2'] else '')
+                c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (3 * line_space) - (rec_size * pair_count), item['ADDRESS3'] if item['ADDRESS3'] else '')
+                c.drawString(scnd_clmn + left_right_margin, -top_bottom_margin - (4 * line_space) - (rec_size * pair_count), item['ADDRESS4'] if item['ADDRESS4'] else '')
+            rec_count+=1
+            if rec_count > 11:
+                rec_count = 0
+                pair_count = -1
+                c.showPage()
+                c.translate(0, height - line_space)
+                c.setFont("Helvetica", 11)
+                c.drawCentredString(width/2,-line_space * 1,"Jacket: "+str(jacket))
+                c.drawCentredString(width/2,-line_space * 2,"Date: "+time.strftime("%m/%d/%Y"))
+
+        c.save()
+        pdf = buffer.getvalue()
+        buffer.close()
+
+#        header = {'Content-Disposition': 'attachment; filename=' + str(jacket) + '_labels.pdf'}
+        header = {'Content-Type': 'application/pdf'}
+
+        response.headers.update(header)
+
+
+    return dict(form=form, pdf=pdf)
+
+
+def user():
+    """
+    exposes:
+    http://..../[app]/default/user/login
+    http://..../[app]/default/user/logout
+    http://..../[app]/default/user/register
+    http://..../[app]/default/user/profile
+    http://..../[app]/default/user/retrieve_password
+    http://..../[app]/default/user/change_password
+    http://..../[app]/default/user/manage_users (requires membership in
+    http://..../[app]/default/user/bulk_register
+    use @auth.requires_login()
+        @auth.requires_membership('group name')
+        @auth.requires_permission('read','table name',record_id)
+    to decorate functions that need access control
+    """
+    return dict(form=auth())
+
+
+@cache.action()
+def download():
+    """
+    allows downloading of uploaded files
+    http://..../[app]/default/download/[filename]
+    """
+    return response.download(request, db)
+
+
+def call():
+    """
+    exposes services. for example:
+    http://..../[app]/default/call/jsonrpc
+    decorate with @services.jsonrpc the functions to expose
+    supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv
+    """
+    return service()
+
+def import_csv(): 
+    from gluon.sqlhtml import form_factory 
+    form=form_factory(SQLField('import_csv','upload',uploadfolder=os.path.join(request.folder,'uploads'))) 
+    if form.accepts(request.vars,session): 
+        request.flash='Received: %s'%request.vars.import_csv 
+        print request.vars.import_csv.filename 
+        print len(request.vars.import_csv.file.read()),'bytes' 
+    return dict(form=form)
